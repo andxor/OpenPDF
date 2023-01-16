@@ -114,6 +114,12 @@ public class PdfSignatureAppearance {
   public static final int CERTIFIED_FORM_FILLING = 2;
   public static final int CERTIFIED_FORM_FILLING_AND_ANNOTATIONS = 3;
 
+  public static final int NOT_SPECIFIED = 0;
+  public static final int SIMPLE_DIGITAL_SIGNATURE = 1;
+  public static final int ADVANCED_DIGITAL_SIGNATURE = 2;
+  public static final int GRAPHOMETRIC_DIGITAL_SIGNATURE = 3;
+  public static final int FULLY_QUALIFIED_DIGITAL_SIGNATURE = 4;
+
   private static final float TOP_SECTION = 0.3f;
   private static final float MARGIN = 2;
   private Rectangle rect;
@@ -124,6 +130,9 @@ public class PdfSignatureAppearance {
   private String layer2Text;
   private String reason;
   private String location;
+  private String signatureType;
+  private String attributeName;
+  private String attributeValue;
   private Calendar signDate;
   private String provider;
   private int page = 1;
@@ -483,7 +492,7 @@ public class PdfSignatureAppearance {
       String text;
       if (layer2Text == null) {
         StringBuilder buf = new StringBuilder();
-        buf.append("Digitally signed by ")
+        buf.append("Signed by ")
             .append(PdfPKCS7.getSubjectFields((X509Certificate) certChain[0]).getField("CN"))
             .append('\n');
         SimpleDateFormat sd = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss z");
@@ -492,6 +501,10 @@ public class PdfSignatureAppearance {
           buf.append('\n').append("Reason: ").append(reason);
         if (location != null)
           buf.append('\n').append("Location: ").append(location);
+        if (signatureType != null)
+          buf.append('\n').append("Type: ").append(signatureType);
+        if (attributeName != null && attributeValue != null)
+          buf.append('\n').append(attributeName).append(": ").append(attributeValue);
         text = buf.toString();
       } else
         text = layer2Text;
@@ -784,6 +797,51 @@ public class PdfSignatureAppearance {
    */
   public void setLocation(String location) {
     this.location = location;
+  }
+
+  /**
+   * Gets the signature type.
+   *
+   * @return the signature type
+   */
+  public String getSignatureType() { return this.signatureType; }
+
+  /**
+   * Sets the signing location.
+   *
+   * @param signatureType
+   *          the values can be: <code>NOT_SPECIFIED</code>,
+   *          <code>SIMPLE_DIGITAL_SIGNATURE</code>,
+   *          <code>ADVANCED_DIGITAL_SIGNATURE</code>,
+   *          <code>GRAPHOMETRIC_DIGITAL_SIGNATURE</code>and
+   *          <code>FULLY_QUALIFIED_DIGITAL_SIGNATURE</code>
+   */
+  public void setSignatureType(int signatureType) {
+    switch (signatureType) {
+      case SIMPLE_DIGITAL_SIGNATURE:
+        this.signatureType = "Simple digital signature";
+        break;
+      case ADVANCED_DIGITAL_SIGNATURE:
+        this.signatureType = "Advanced digital signature";
+        break;
+      case GRAPHOMETRIC_DIGITAL_SIGNATURE:
+        this.signatureType = "Graphometric digital signature";
+        break;
+      case FULLY_QUALIFIED_DIGITAL_SIGNATURE:
+        this.signatureType = "Fully Qualified digital signature";
+        break;
+      default:
+      case NOT_SPECIFIED:
+        this.signatureType = null;
+        break;
+    }
+  }
+
+  /**
+   *  this is called only internally. Externally we don't give direct access to signatureType
+   */
+  protected void setSignatureType(String signatureType) {
+    this.signatureType = signatureType;
   }
 
   /**
