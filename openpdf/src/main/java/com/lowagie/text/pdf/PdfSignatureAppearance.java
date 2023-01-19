@@ -114,11 +114,11 @@ public class PdfSignatureAppearance {
   public static final int CERTIFIED_FORM_FILLING = 2;
   public static final int CERTIFIED_FORM_FILLING_AND_ANNOTATIONS = 3;
 
-  public static final int NOT_SPECIFIED = 0;
-  public static final int SIMPLE_DIGITAL_SIGNATURE = 1;
-  public static final int ADVANCED_DIGITAL_SIGNATURE = 2;
-  public static final int GRAPHOMETRIC_DIGITAL_SIGNATURE = 3;
-  public static final int FULLY_QUALIFIED_DIGITAL_SIGNATURE = 4;
+  public static final int DIGITAL_SIGNATURE_NOT_SPECIFIED = 0;
+  public static final int DIGITAL_SIGNATURE_SIMPLE = 1;
+  public static final int DIGITAL_SIGNATURE_ADVANCED = 2;
+  public static final int DIGITAL_SIGNATURE_GRAPHOMETRIC = 3;
+  public static final int DIGITAL_SIGNATURE_FULLY_QUALIFIED = 4;
 
   private static final float TOP_SECTION = 0.3f;
   private static final float MARGIN = 2;
@@ -818,20 +818,20 @@ public class PdfSignatureAppearance {
    */
   public void setSignatureType(int signatureType) {
     switch (signatureType) {
-      case SIMPLE_DIGITAL_SIGNATURE:
+      case DIGITAL_SIGNATURE_SIMPLE:
         this.signatureType = "Simple digital signature";
         break;
-      case ADVANCED_DIGITAL_SIGNATURE:
+      case DIGITAL_SIGNATURE_ADVANCED:
         this.signatureType = "Advanced digital signature";
         break;
-      case GRAPHOMETRIC_DIGITAL_SIGNATURE:
+      case DIGITAL_SIGNATURE_GRAPHOMETRIC:
         this.signatureType = "Graphometric digital signature";
         break;
-      case FULLY_QUALIFIED_DIGITAL_SIGNATURE:
+      case DIGITAL_SIGNATURE_FULLY_QUALIFIED:
         this.signatureType = "Fully Qualified digital signature";
         break;
       default:
-      case NOT_SPECIFIED:
+      case DIGITAL_SIGNATURE_NOT_SPECIFIED:
         this.signatureType = null;
         break;
     }
@@ -843,6 +843,24 @@ public class PdfSignatureAppearance {
   protected void setSignatureType(String signatureType) {
     this.signatureType = signatureType;
   }
+
+  /**
+   * set custom attribute for signature appearance
+   */
+  public void setAttribute(String attributeName, String attributeValue) {
+    this.attributeName = attributeName;
+    this.attributeValue = attributeValue;
+  }
+
+  /**
+   * get custom attribute Name
+   */
+  public String getAttributeName() { return attributeName; }
+
+  /**
+   * get custom attribute Value
+   */
+  public String getAttributeValue() { return attributeValue; }
 
   /**
    * Returns the Cryptographic Service Provider that will sign the document.
