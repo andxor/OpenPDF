@@ -481,7 +481,7 @@ public class PdfSignatureAppearance {
       String text;
       if (layer2Text == null) {
         StringBuilder buf = new StringBuilder();
-        buf.append("Signed by ")
+        buf.append("Digitally Signed by ")
             .append(PdfPKCS7.getSubjectFields((X509Certificate) certChain[0]).getField("CN"))
             .append('\n');
         SimpleDateFormat sd = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss z");
@@ -792,7 +792,10 @@ public class PdfSignatureAppearance {
    * @throws NullPointerException if <code>name</code> or <code>value</code> in <code>null</code>
    */
   public void setCustomAttribute(String name, String value) {
-    if (customAttributes==null) customAttributes = new ConcurrentHashMap<String, String>();
+    if (customAttributes==null) {
+      Map<String, String> internalMap = new LinkedHashMap<String, String>();
+      customAttributes = Collections.synchronizedMap(internalMap);
+    }
     customAttributes.put(name,value);
   }
 
