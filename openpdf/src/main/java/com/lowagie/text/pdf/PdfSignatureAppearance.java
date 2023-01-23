@@ -490,7 +490,11 @@ public class PdfSignatureAppearance {
           buf.append('\n').append("Reason: ").append(reason);
         if (location != null)
           buf.append('\n').append("Location: ").append(location);
-          // TODO: leggere la mappa
+        if (customAttributes!=null) {
+          Set<String> keys = customAttributes.keySet();
+          for (String key : keys)
+            buf.append('\n').append(key).append(": ").append(customAttributes.get(key));
+        }
         text = buf.toString();
       } else
         text = layer2Text;
