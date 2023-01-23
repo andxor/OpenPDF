@@ -59,11 +59,8 @@ import java.security.cert.CRL;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.lowagie.text.Chunk;
 import com.lowagie.text.DocumentException;
@@ -114,12 +111,6 @@ public class PdfSignatureAppearance {
   public static final int CERTIFIED_FORM_FILLING = 2;
   public static final int CERTIFIED_FORM_FILLING_AND_ANNOTATIONS = 3;
 
-  public static final int DIGITAL_SIGNATURE_NOT_SPECIFIED = 0;
-  public static final int DIGITAL_SIGNATURE_SIMPLE = 1;
-  public static final int DIGITAL_SIGNATURE_ADVANCED = 2;
-  public static final int DIGITAL_SIGNATURE_GRAPHOMETRIC = 3;
-  public static final int DIGITAL_SIGNATURE_FULLY_QUALIFIED = 4;
-
   private static final float TOP_SECTION = 0.3f;
   private static final float MARGIN = 2;
   private Rectangle rect;
@@ -130,9 +121,6 @@ public class PdfSignatureAppearance {
   private String layer2Text;
   private String reason;
   private String location;
-  private String signatureType;
-  private String attributeName;
-  private String attributeValue;
   private Calendar signDate;
   private String provider;
   private int page = 1;
@@ -156,6 +144,7 @@ public class PdfSignatureAppearance {
   private byte[] externalRSAdata;
   private String digestEncryptionAlgorithm;
   private Map<PdfName, PdfLiteral> exclusionLocations;
+  private Map<String, String> customAttributes;
 
   private Certificate[] certChain;
 
@@ -501,10 +490,7 @@ public class PdfSignatureAppearance {
           buf.append('\n').append("Reason: ").append(reason);
         if (location != null)
           buf.append('\n').append("Location: ").append(location);
-        if (signatureType != null)
-          buf.append('\n').append("Type: ").append(signatureType);
-        if (attributeName != null && attributeValue != null)
-          buf.append('\n').append(attributeName).append(": ").append(attributeValue);
+          // TODO: leggere la mappa
         text = buf.toString();
       } else
         text = layer2Text;
@@ -800,67 +786,56 @@ public class PdfSignatureAppearance {
   }
 
   /**
-   * Gets the signature type.
+   * adds a custom attribute with <code>name</code> and <code>value</code>
+   * @param name  the name of the custom attribute
+   * @param value the value of the custom attribute
+   * @throws NullPointerException if <code>name</code> or <code>value</code> in <code>null</code>
+   */
+  public void setCustomAttribute(String name, String value) {
+    if (customAttributes==null) customAttributes = new ConcurrentHashMap<String, String>();
+    customAttributes.put(name,value);
+  }
+
+  /**
+   * reads the value of a custom attribute
+   * @param name the name of the attribute to look for
+   * @return <code>null</code> if the attribute is not found
+   */
+  public String getCustomAttribute(String name) {
+    if (customAttributes==null || name==null) return null;
+    return customAttributes.get(name);
+  }
+
+  /**
+   * @return a <code>Map&lt;String, String&gt;</code> filled with the attributes name, value pairs
+   *         <code>null</code> if there's no custom attribute
+   */
+  public Map getCustomAttributes() {
+    if (customAttributes==null) return null;
+    ConcurrentHashMap<String, String> deepClone = new ConcurrentHashMap<>();
+    Set<String> keys = customAttributes.keySet();
+    for (String key : keys) deepClone.put(key, customAttributes.get(key));
+    return deepClone;
+  }
+
+  /**
+   * removes a specified custom attribute
    *
-   * @return the signature type
+   * @param key specify the key of the element to be removed
+   * @return the value of the element removed, or <code>null</code> if not found
+   * @throws NullPointerException if key is <code>null</code>
    */
-  public String getSignatureType() { return this.signatureType; }
-
-  /**
-   * Sets the signing location.
-   *
-   * @param signatureType
-   *          the values can be: <code>NOT_SPECIFIED</code>,
-   *          <code>SIMPLE_DIGITAL_SIGNATURE</code>,
-   *          <code>ADVANCED_DIGITAL_SIGNATURE</code>,
-   *          <code>GRAPHOMETRIC_DIGITAL_SIGNATURE</code>and
-   *          <code>FULLY_QUALIFIED_DIGITAL_SIGNATURE</code>
-   */
-  public void setSignatureType(int signatureType) {
-    switch (signatureType) {
-      case DIGITAL_SIGNATURE_SIMPLE:
-        this.signatureType = "Simple digital signature";
-        break;
-      case DIGITAL_SIGNATURE_ADVANCED:
-        this.signatureType = "Advanced digital signature";
-        break;
-      case DIGITAL_SIGNATURE_GRAPHOMETRIC:
-        this.signatureType = "Graphometric digital signature";
-        break;
-      case DIGITAL_SIGNATURE_FULLY_QUALIFIED:
-        this.signatureType = "Fully Qualified digital signature";
-        break;
-      default:
-      case DIGITAL_SIGNATURE_NOT_SPECIFIED:
-        this.signatureType = null;
-        break;
-    }
+  public String deleteCustomAttribute(String key) {
+    if (customAttributes==null) return null;
+    return customAttributes.remove(key);
   }
 
   /**
-   *  this is called only internally. Externally we don't give direct access to signatureType
+   * removes all custom attributes
    */
-  protected void setSignatureType(String signatureType) {
-    this.signatureType = signatureType;
+  public void clearCustomAttributes() {
+    if (customAttributes!=null) customAttributes.clear();
   }
-
-  /**
-   * set custom attribute for signature appearance
-   */
-  public void setAttribute(String attributeName, String attributeValue) {
-    this.attributeName = attributeName;
-    this.attributeValue = attributeValue;
-  }
-
-  /**
-   * get custom attribute Name
-   */
-  public String getAttributeName() { return attributeName; }
-
-  /**
-   * get custom attribute Value
-   */
-  public String getAttributeValue() { return attributeValue; }
 
   /**
    * Returns the Cryptographic Service Provider that will sign the document.
