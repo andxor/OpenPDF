@@ -94,6 +94,20 @@ public class PdfSignatureAppearance {
   public static final int SignatureRenderGraphicAndDescription = 2;
 
   /**
+   * Special mode for SignatureRenderGraphicAndDescription, no change
+   */
+  public static final int NoChangeImageAndText = 0;
+  /**
+   * Special mode for SignatureRenderGraphicAndDescription, image at left
+   */
+  public static final int LeftImageRightText = 1;
+  /**
+   * Special mode for SignatureRenderGraphicAndDescription, image at right
+   */
+  public static final int RightImageLeftText = 2;
+
+
+  /**
    * The self signed filter.
    */
   public static final PdfName SELF_SIGNED = PdfName.ADOBE_PPKLITE;
@@ -157,6 +171,7 @@ public class PdfSignatureAppearance {
   }
 
   private int render = SignatureRenderDescription;
+  private int specialMode = NoChangeImageAndText;
 
   /**
    * Gets the rendering mode for this signature.
@@ -179,6 +194,32 @@ public class PdfSignatureAppearance {
    */
   public void setRender(int render) {
     this.render = render;
+  }
+
+  /**
+   * Sets the special rendering mode for this signature. The special modes can be the
+   * constants <CODE>NoChangeImageAndText</CODE>,
+   * <CODE>LeftImageRightText</CODE> or
+   * <CODE>RightTextLeftImage</CODE>. This last two modes
+   * should be used with Acrobat 6 layer type, and automatically set
+   * render at SignatureRenderGraphicAndDescription, and get Image from setImage,
+   * instead setSignatureGraphics.
+   *
+   * @param specialMode
+   *          optional special mode for image position
+   */
+  public void setSpecialMode(int specialMode) {
+    this.specialMode = specialMode;
+    this.render = SignatureRenderGraphicAndDescription;
+  }
+
+  /**
+   * Gets the special rendering mode for this signature.
+   *
+   * @return the special rendering mode for this signature
+   */
+  public int getSpecialMode() {
+    return this.specialMode;
   }
 
   private Image signatureGraphic = null;
@@ -492,8 +533,9 @@ public class PdfSignatureAppearance {
           buf.append('\n').append("Location: ").append(location);
         if (customAttributes!=null) {
           Set<String> keys = customAttributes.keySet();
-          for (String key : keys)
+          for (String key : keys) {
             buf.append('\n').append(key).append(": ").append(customAttributes.get(key));
+          }
         }
         text = buf.toString();
       } else
@@ -501,7 +543,7 @@ public class PdfSignatureAppearance {
       PdfTemplate t = app[2] = new PdfTemplate(writer);
       t.setBoundingBox(rect);
       writer.addDirectTemplateSimple(t, new PdfName("n2"));
-      if (image != null) {
+      if (image != null && specialMode==NoChangeImageAndText) {
         if (imageScale == 0) {
           t.addImage(image, rect.getWidth(), 0, 0, rect.getHeight(), 0, 0);
         } else {
@@ -526,8 +568,10 @@ public class PdfSignatureAppearance {
       Rectangle dataRect = null;
       Rectangle signatureRect = null;
 
+
       if (render == SignatureRenderNameAndDescription
-          || (render == SignatureRenderGraphicAndDescription && this.signatureGraphic != null)) {
+          || (render == SignatureRenderGraphicAndDescription && this.signatureGraphic != null)
+      || specialMode!=NoChangeImageAndText && this.image != null) {
         // origin is the bottom-left
         signatureRect = new Rectangle(MARGIN, MARGIN, rect.getWidth() / 2
             - MARGIN, rect.getHeight() - MARGIN);
@@ -540,12 +584,17 @@ public class PdfSignatureAppearance {
           dataRect = new Rectangle(MARGIN, MARGIN, rect.getWidth() - MARGIN,
               rect.getHeight() / 2 - MARGIN);
         }
+        if (specialMode== RightImageLeftText) {
+          Rectangle tmp = new Rectangle(signatureRect);
+          signatureRect = new Rectangle(dataRect);
+          dataRect=tmp;
+        }
       } else {
         dataRect = new Rectangle(MARGIN, MARGIN, rect.getWidth() - MARGIN,
             rect.getHeight() * (1 - TOP_SECTION) - MARGIN);
       }
 
-      if (render == SignatureRenderNameAndDescription) {
+        if (render == SignatureRenderNameAndDescription) {
         String signedBy = PdfPKCS7.getSubjectFields((X509Certificate) certChain[0]).getField("CN");
         Rectangle sr2 = new Rectangle(signatureRect.getWidth() - MARGIN,
             signatureRect.getHeight() - MARGIN);
@@ -562,11 +611,12 @@ public class PdfSignatureAppearance {
       } else if (render == SignatureRenderGraphicAndDescription) {
         ColumnText ct2 = new ColumnText(t);
         ct2.setRunDirection(runDirection);
-        ct2.setSimpleColumn(signatureRect.getLeft(), signatureRect.getBottom(),
-            signatureRect.getRight(), signatureRect.getTop(), 0,
-            Element.ALIGN_RIGHT);
+          ct2.setSimpleColumn(signatureRect.getLeft(), signatureRect.getBottom(),
+                  signatureRect.getRight(), signatureRect.getTop(), 0,
+                  Element.ALIGN_RIGHT);
 
-        Image im = Image.getInstance(signatureGraphic);
+        Image im = (specialMode==NoChangeImageAndText ? Image.getInstance(signatureGraphic) :
+                Image.getInstance(image));
         im.scaleToFit(signatureRect.getWidth(), signatureRect.getHeight());
 
         Paragraph p = new Paragraph();
