@@ -598,7 +598,7 @@ public class PdfSignatureAppearance {
         String signedBy = PdfPKCS7.getSubjectFields((X509Certificate) certChain[0]).getField("CN");
         Rectangle sr2 = new Rectangle(signatureRect.getWidth() - MARGIN,
             signatureRect.getHeight() - MARGIN);
-        float signedSize = fitText(font, signedBy, sr2, -1, runDirection);
+        float signedSize = fitTextEx(font, signedBy, sr2, -1, runDirection);
 
         ColumnText ct2 = new ColumnText(t);
         ct2.setRunDirection(runDirection);
@@ -638,7 +638,7 @@ public class PdfSignatureAppearance {
 
       if (size <= 0) {
         Rectangle sr = new Rectangle(dataRect.getWidth(), dataRect.getHeight());
-        size = fitText(font, text, sr, 12, runDirection);
+        size = fitTextEx(font, text, sr, 12, runDirection);
       }
       ColumnText ct = new ColumnText(t);
       ct.setRunDirection(runDirection);
@@ -728,7 +728,8 @@ public class PdfSignatureAppearance {
    *          the run direction
    * @return the calculated font size that makes the text fit
    */
-  public static float fitText(Font font, String text, Rectangle rect,
+  public static float
+  fitText(Font font, String text, Rectangle rect,
       float maxFontSize, int runDirection) {
     try {
       ColumnText ct = null;
@@ -780,6 +781,113 @@ public class PdfSignatureAppearance {
       throw new ExceptionConverter(e);
     }
   }
+
+  /**
+   * Fits the text to some rectangle adjusting the font size as needed to obtain longest word.
+   * fits in the rectangle without being splitted
+   *
+   * @param font
+   *          the font to use
+   * @param text
+   *          the text
+   * @param rect
+   *          the rectangle where the text must fit
+   * @param maxFontSize
+   *          the maximum font size
+   * @param runDirection
+   *          the run direction
+   * @return the calculated font size that makes the text fit
+   */
+  public static float
+  fitTextEx(Font font, String text, Rectangle rect,
+          float maxFontSize, int runDirection) {
+    // first step, take the longest word
+    String[] words = text.split(" ");
+    String longestWord = "";
+    for (String word : words) if (word.length()>longestWord.length()) longestWord=word;
+
+    // second step, get standard FontSize
+    float otherSize = fitText(font,text,rect,maxFontSize,runDirection);
+
+    // third step. Write in a ColumnText a single Character (ctsc) and then read yLine
+    // then write in another ColumnText the longest word (ct), then check if ct yLine
+    // is equal to ctsc yLine. If true, then the longest word is not splitted between lines
+    // If splitted, then use the same approach of fitText to reduce font size and retry
+    //
+    // at the end we return the minimum beetween sizes from fitText and fitTextEx
+    try {
+      ColumnText ct = null;
+      ColumnText ctsc = null;
+      int status = 0;
+      if (maxFontSize <= 0) {
+        int cr = 0;
+        int lf = 0;
+        char[] t = text.toCharArray();
+        for (char c : t) {
+          if (c == '\n')
+            ++lf;
+          else if (c == '\r')
+            ++cr;
+        }
+        int minLines = Math.max(cr, lf) + 1;
+        maxFontSize = Math.abs(rect.getHeight()) / minLines - 0.001f;
+      }
+      font.setSize(maxFontSize);
+      Phrase ph = new Phrase(longestWord, font);
+      Phrase signleChar = new Phrase("A", font);
+      ct = new ColumnText(null);
+      ctsc = new ColumnText(null);
+      ctsc.setSimpleColumn(signleChar, rect.getLeft(), rect.getBottom(), rect.getRight(),
+              rect.getTop(), maxFontSize, Element.ALIGN_LEFT);
+      ctsc.setRunDirection(runDirection);
+      ctsc.go(true);
+      float yLine = ctsc.yLine;
+      ct.setSimpleColumn(ph, rect.getLeft(), rect.getBottom(), rect.getRight(),
+              rect.getTop(), maxFontSize, Element.ALIGN_LEFT);
+      ct.setRunDirection(runDirection);
+      status = ct.go(true);
+      if ((status & ColumnText.NO_MORE_TEXT) != 0 && yLine==ct.yLine) {
+        font.setSize(Math.min(maxFontSize,otherSize));
+        return Math.min(maxFontSize, otherSize);
+      }
+      float precision = 0.1f;
+      float min = 0;
+      float max = maxFontSize;
+      float size = maxFontSize;
+      for (int k = 0; k < 50; ++k) { // just in case it doesn't converge
+        size = (min + max) / 2;
+        ct = new ColumnText(null);
+        font.setSize(size);
+        ct.setSimpleColumn(new Phrase(longestWord, font), rect.getLeft(),
+                rect.getBottom(), rect.getRight(), rect.getTop(), size,
+                Element.ALIGN_LEFT);
+        ct.setRunDirection(runDirection);
+        status = ct.go(true);
+
+        ctsc = new ColumnText(null);
+        ctsc.setSimpleColumn(new Phrase("A",font), rect.getLeft(), rect.getBottom(), rect.getRight(),
+                rect.getTop(), size, Element.ALIGN_LEFT);
+        ctsc.setRunDirection(runDirection);
+        ctsc.go(true);
+        yLine = ctsc.yLine;
+
+        if ((status & ColumnText.NO_MORE_TEXT) != 0 && yLine==ct.yLine) {
+          if (max - min < size * precision){
+            if (size<1) size=otherSize;
+            font.setSize(Math.min(size,otherSize));
+            return Math.min(size, otherSize);
+          }
+          min = size;
+        } else
+          max = size;
+      }
+      font.setSize(otherSize);
+      return otherSize;
+    } catch (Exception e) {
+      throw new ExceptionConverter(e);
+    }
+  }
+
 
   /**
    * Sets the digest/signature to an external calculated value.
