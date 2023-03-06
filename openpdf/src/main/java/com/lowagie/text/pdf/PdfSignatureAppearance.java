@@ -210,7 +210,7 @@ public class PdfSignatureAppearance {
    */
   public void setSpecialMode(int specialMode) {
     this.specialMode = specialMode;
-    this.render = SignatureRenderGraphicAndDescription;
+    if (specialMode!=NoChangeImageAndText) this.render = SignatureRenderGraphicAndDescription;
   }
 
   /**
@@ -871,8 +871,8 @@ public class PdfSignatureAppearance {
         ctsc.go(true);
         yLine = ctsc.yLine;
 
-        if ((status & ColumnText.NO_MORE_TEXT) != 0 && yLine==ct.yLine) {
-          if (max - min < size * precision){
+        if ((status & ColumnText.NO_MORE_TEXT) != 0  && yLine==ct.yLine) {
+          if ((max - min < size * precision)) {
             if (size<1) size=otherSize;
             font.setSize(Math.min(size,otherSize));
             return Math.min(size, otherSize);
