@@ -105,6 +105,14 @@ public class PdfSignatureAppearance {
    * Special mode for SignatureRenderGraphicAndDescription, image at right
    */
   public static final int RightImageLeftText = 2;
+  /**
+   * Special mode for SiSignatureRenderNameAndDescription,  SigText at Left
+   **/
+  public static final int SigTextLeftDescriptionRight = 3;
+  /**
+   * Special mode for SiSignatureRenderNameAndDescription,  SigText at Left
+   **/
+  public static final int SigTextRightDescriptionLeft = 4;
 
 
   /**
@@ -210,7 +218,8 @@ public class PdfSignatureAppearance {
    */
   public void setSpecialMode(int specialMode) {
     this.specialMode = specialMode;
-    if (specialMode!=NoChangeImageAndText) this.render = SignatureRenderGraphicAndDescription;
+    if (specialMode==LeftImageRightText || specialMode==RightImageLeftText) this.render = SignatureRenderGraphicAndDescription;
+    if (specialMode==SigTextLeftDescriptionRight || specialMode==SigTextRightDescriptionLeft) this.render = SignatureRenderNameAndDescription;
   }
 
   /**
@@ -520,7 +529,7 @@ public class PdfSignatureAppearance {
     }
     if (app[2] == null) {
       String text;
-      if (layer2Text == null) {
+      if (layer2Text == null || specialMode==SigTextLeftDescriptionRight || specialMode==SigTextRightDescriptionLeft) {
         StringBuilder buf = new StringBuilder();
         buf.append("Digitally Signed by ")
             .append(PdfPKCS7.getSubjectFields((X509Certificate) certChain[0]).getField("CN"))
@@ -571,7 +580,8 @@ public class PdfSignatureAppearance {
 
       if (render == SignatureRenderNameAndDescription
           || (render == SignatureRenderGraphicAndDescription && this.signatureGraphic != null)
-      || specialMode!=NoChangeImageAndText && this.image != null) {
+      || (specialMode!=NoChangeImageAndText && this.image != null)
+      || specialMode==SigTextLeftDescriptionRight || specialMode==SigTextRightDescriptionLeft) {
         // origin is the bottom-left
         signatureRect = new Rectangle(MARGIN, MARGIN, rect.getWidth() / 2
             - MARGIN, rect.getHeight() - MARGIN);
@@ -584,7 +594,7 @@ public class PdfSignatureAppearance {
           dataRect = new Rectangle(MARGIN, MARGIN, rect.getWidth() - MARGIN,
               rect.getHeight() / 2 - MARGIN);
         }
-        if (specialMode== RightImageLeftText) {
+        if (specialMode== RightImageLeftText || specialMode==SigTextRightDescriptionLeft) {
           Rectangle tmp = new Rectangle(signatureRect);
           signatureRect = new Rectangle(dataRect);
           dataRect=tmp;
@@ -594,8 +604,10 @@ public class PdfSignatureAppearance {
             rect.getHeight() * (1 - TOP_SECTION) - MARGIN);
       }
 
-        if (render == SignatureRenderNameAndDescription) {
+      if (render == SignatureRenderNameAndDescription || specialMode==SigTextLeftDescriptionRight
+              || specialMode==SigTextRightDescriptionLeft) {
         String signedBy = PdfPKCS7.getSubjectFields((X509Certificate) certChain[0]).getField("CN");
+        if (specialMode==SigTextLeftDescriptionRight || specialMode==SigTextRightDescriptionLeft) signedBy = layer2Text;
         Rectangle sr2 = new Rectangle(signatureRect.getWidth() - MARGIN,
             signatureRect.getHeight() - MARGIN);
         float signedSize = fitTextEx(font, signedBy, sr2, -1, runDirection);
@@ -804,7 +816,7 @@ public class PdfSignatureAppearance {
     // first step, take the longest word
     String[] words = text.split(" ");
     String longestWord = "";
-    for (String word : words) if (word.length()>longestWord.length()) longestWord=word;
+    for (String word : words) if (word.length()>longestWord.length()) longestWord=word+"A"; // we add a character for a better fit
 
     // second step, get standard FontSize
     float otherSize = fitText(font,text,rect,maxFontSize,runDirection);
