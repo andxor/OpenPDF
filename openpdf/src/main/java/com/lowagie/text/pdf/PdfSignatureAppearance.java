@@ -531,7 +531,7 @@ public class PdfSignatureAppearance {
       String text;
       if (layer2Text == null || specialMode==SigTextLeftDescriptionRight || specialMode==SigTextRightDescriptionLeft) {
         StringBuilder buf = new StringBuilder();
-        buf.append("Digitally Signed by ")
+        buf.append("Signed by\n")
             .append(PdfPKCS7.getSubjectFields((X509Certificate) certChain[0]).getField("CN"))
             .append('\n');
         SimpleDateFormat sd = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss z");
